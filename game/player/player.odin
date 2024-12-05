@@ -8,13 +8,17 @@ PLAYER_FRAME_WIDTH :: 32
 PLAYER_FRAME_HEIGHT :: 64
 
 PlayerData :: struct {
-	DestRect:   rl.Rectangle,
-	FrameSpeed: u16,
-	IsGrounded: bool,
-	Origin:     rl.Vector2,
-	Position:   rl.Vector2,
-	SrcRect:    rl.Rectangle,
-	Velocity:   rl.Vector2,
+	CurrentFrame: u8,
+	DestRect:     rl.Rectangle,
+	FrameLength:  f32,
+	FrameTimer:   f32,
+	IsGrounded:   bool,
+	NumOfFrames:  u8,
+	Origin:       rl.Vector2,
+	Position:     rl.Vector2,
+	Speed:        u16,
+	SrcRect:      rl.Rectangle,
+	Velocity:     rl.Vector2,
 }
 
 PlayerState :: enum {
@@ -60,12 +64,14 @@ init :: proc(game_config: ^config.GameConfig) -> Player {
 		zoom     = 1.0,
 	}
 	player_data := PlayerData {
-		DestRect   = dest_rect,
-		FrameSpeed = 400,
-		IsGrounded = true,
-		Origin     = origin,
-		Position   = position,
-		SrcRect    = src_rect,
+		CurrentFrame = 0,
+		DestRect     = dest_rect,
+		FrameLength  = 0.1,
+		IsGrounded   = true,
+		Origin       = origin,
+		Position     = position,
+		Speed        = 400,
+		SrcRect      = src_rect,
 	}
 	player := Player {
 		Camera   = player_camera,
@@ -76,23 +82,26 @@ init :: proc(game_config: ^config.GameConfig) -> Player {
 	return player
 }
 
-render_player :: proc(game_config: config.GameConfig, player: ^Player) {
-	handle_key_down(game_config, player)
-	player.Data.DestRect.x = player.Data.Position.x
-	player.Data.DestRect.y = player.Data.Position.y
-	if .Idle in player.State {
-		render_player_idle(player)
-	} else {
-		if .Running in player.State {
-			render_player_running(player)
-		}
-		if .Jumping in player.State {
-			render_player_running(player)
+update_player_frame_data :: proc(player: ^Player) {
+	player.Data.FrameTimer += rl.GetFrameTime()
+	if player.Data.FrameTimer > player.Data.FrameLength {
+		player.Data.CurrentFrame += 1
+		player.Data.FrameTimer = 0
+
+		if player.Data.CurrentFrame == player.Data.NumOfFrames {
+			player.Data.CurrentFrame = 0
 		}
 	}
 }
 
-render_player_idle :: proc(player: ^Player) {
+update_player_rect :: proc(player: ^Player) {
+	player.Data.SrcRect.x = f32(player.Data.CurrentFrame) * f32(player.Data.SrcRect.width)
+	player.Data.DestRect.x = player.Data.Position.x
+	player.Data.DestRect.y = player.Data.Position.y
+}
+
+render_player :: proc(game_config: config.GameConfig, player: ^Player) {
+	handle_key_down(game_config, player)
 	if config.DEBUG_MODE {
 		rl.DrawRectangleLines(
 			i32(player.Data.DestRect.x - player.Data.SrcRect.width),
@@ -102,6 +111,28 @@ render_player_idle :: proc(player: ^Player) {
 			rl.RED,
 		)
 	}
+	if .Idle in player.State {
+		player.Data.NumOfFrames = 6
+		update_player_frame_data(player)
+		update_player_rect(player)
+		render_player_idle(player)
+	} else {
+		if .Running in player.State {
+			player.Data.NumOfFrames = 4
+			update_player_frame_data(player)
+			update_player_rect(player)
+			render_player_running(player)
+		}
+		if .Jumping in player.State {
+			player.Data.NumOfFrames = 4
+			update_player_frame_data(player)
+			update_player_rect(player)
+			render_player_jumping(player)
+		}
+	}
+}
+
+render_player_idle :: proc(player: ^Player) {
 	rl.DrawTexturePro(
 		player.Textures.Idle,
 		player.Data.SrcRect,
@@ -113,17 +144,19 @@ render_player_idle :: proc(player: ^Player) {
 }
 
 render_player_running :: proc(player: ^Player) {
-	if config.DEBUG_MODE {
-		rl.DrawRectangleLines(
-			i32(player.Data.DestRect.x - player.Data.SrcRect.width),
-			i32(player.Data.DestRect.y - player.Data.SrcRect.height),
-			i32(player.Data.DestRect.width),
-			i32(player.Data.DestRect.height),
-			rl.RED,
-		)
-	}
 	rl.DrawTexturePro(
 		player.Textures.Run,
+		player.Data.SrcRect,
+		player.Data.DestRect,
+		player.Data.Origin,
+		0.0,
+		rl.WHITE,
+	)
+}
+
+render_player_jumping :: proc(player: ^Player) {
+	rl.DrawTexturePro(
+		player.Textures.Jump,
 		player.Data.SrcRect,
 		player.Data.DestRect,
 		player.Data.Origin,

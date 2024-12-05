@@ -17,11 +17,11 @@ handle_key_down :: proc(game_config: config.GameConfig, player: ^Player) {
 	is_moving: bool
 	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
 		set_player_active(player, .Running)
-		player.Data.Velocity.x = -f32(player.Data.FrameSpeed)
+		player.Data.Velocity.x = -f32(player.Data.Speed)
 		is_moving = true
 	} else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
 		set_player_active(player, .Running)
-		player.Data.Velocity.x = f32(player.Data.FrameSpeed)
+		player.Data.Velocity.x = f32(player.Data.Speed)
 		is_moving = true
 	}
 	player.Data.Velocity.y += 2000 * rl.GetFrameTime()
