@@ -120,6 +120,8 @@ start :: proc(game: ^Game) {
 			pressedKey := rl.GetKeyPressed()
 			if pressedKey == rl.KeyboardKey.ESCAPE {
 				game.Data.CurrentScreen = .Paused
+			} else {
+				player.render_player(game.Config, &game.Player)
 			}
 		case .Paused:
 			text: cstring = "Game Paused"
@@ -133,7 +135,7 @@ start :: proc(game: ^Game) {
 				text,
 				i32(pos.x),
 				i32(pos.y) - i32(0.25 * f32(game.Config.WindowHeight)),
-				i32(game.Config.DefaultFontSize),
+				i32(game.Config.DefaultFontSize + 20),
 				rl.LIGHTGRAY,
 			)
 			pressedKey := rl.GetKeyPressed()
