@@ -4,59 +4,38 @@ import "../config"
 import "core:fmt"
 import rl "vendor:raylib"
 
-PLAYER_FRAME_WIDTH :: 32
-PLAYER_FRAME_HEIGHT :: 64
-
 PlayerData :: struct {
-	CurrentFrame: u8,
+	CurrentFrame: i32,
 	DestRect:     rl.Rectangle,
-	FrameLength:  f32,
+	Flip:         bool,
 	FrameTimer:   f32,
 	IsGrounded:   bool,
-	NumOfFrames:  u8,
 	Origin:       rl.Vector2,
 	Position:     rl.Vector2,
-	Speed:        u16,
+	Speed:        i32,
 	SrcRect:      rl.Rectangle,
 	Velocity:     rl.Vector2,
 }
 
 PlayerState :: enum {
-	Idle,
-	Running,
-	Jumping,
-	Attacking1,
-	Attacking2,
+	IDLE,
+	RUNNING,
+	JUMPING,
 }
 
 Player :: struct {
-	Camera:   rl.Camera2D,
-	Data:     PlayerData,
-	State:    bit_set[PlayerState],
-	Textures: Textures,
+	Actions: Actions,
+	Camera:  rl.Camera2D,
+	Data:    PlayerData,
+	State:   bit_set[PlayerState],
 }
 
 init :: proc(game_config: ^config.GameConfig) -> Player {
 	// load textures before setting up player data
-	player_textures := load_textures()
+	player_actions := load_actions()
 
 	// set up player data
-	frame_width := f32(PLAYER_FRAME_WIDTH)
-	frame_height := f32(PLAYER_FRAME_HEIGHT)
 	position := rl.Vector2{f32(game_config.WindowWidth / 2), f32(game_config.WindowHeight / 2)}
-	dest_rect := rl.Rectangle {
-		x      = position.x,
-		y      = position.y,
-		width  = frame_width * 2,
-		height = frame_height * 2,
-	}
-	origin := rl.Vector2{frame_width, frame_height}
-	src_rect := rl.Rectangle {
-		x      = 0.0,
-		y      = 0.0,
-		width  = frame_width,
-		height = frame_height,
-	}
 	player_camera := rl.Camera2D {
 		offset   = position,
 		rotation = 0.0,
@@ -65,101 +44,131 @@ init :: proc(game_config: ^config.GameConfig) -> Player {
 	}
 	player_data := PlayerData {
 		CurrentFrame = 0,
-		DestRect     = dest_rect,
-		FrameLength  = 0.1,
 		IsGrounded   = true,
-		Origin       = origin,
 		Position     = position,
 		Speed        = 400,
-		SrcRect      = src_rect,
 	}
 	player := Player {
-		Camera   = player_camera,
-		Data     = player_data,
-		State    = {.Idle},
-		Textures = player_textures,
+		Actions = player_actions,
+		Camera  = player_camera,
+		Data    = player_data,
+		State   = {.IDLE},
 	}
 	return player
 }
 
-update_player_frame_data :: proc(player: ^Player) {
+draw_debug_rectangle :: proc(
+	destination_rect: rl.Rectangle,
+	flip: bool,
+	source_rect: rl.Rectangle,
+) {
+	when config.DEBUG_MODE {
+		rl.DrawRectangleLines(
+			i32(
+				flip ? destination_rect.x + source_rect.width : destination_rect.x - source_rect.width,
+			),
+			i32(destination_rect.y - source_rect.height),
+			i32(destination_rect.width),
+			i32(destination_rect.height),
+			rl.RED,
+		)
+	}
+}
+
+get_destination_rect :: proc(action: Action, position: rl.Vector2) -> rl.Rectangle {
+	destination_rect := rl.Rectangle {
+		x      = position.x,
+		y      = position.y,
+		width  = f32(action.FrameWidth * 2),
+		height = f32(action.FrameHeight * 2),
+	}
+	return destination_rect
+}
+
+get_origin :: proc(action: Action) -> rl.Vector2 {
+	origin := rl.Vector2{f32(action.FrameWidth), f32(action.FrameHeight)}
+	return origin
+}
+
+get_source_rect :: proc(action: Action, current_frame: i32, flip: bool) -> rl.Rectangle {
+	source_rect := rl.Rectangle {
+		x      = f32(current_frame) * f32(action.FrameWidth),
+		y      = 0,
+		width  = f32(action.FrameWidth),
+		height = f32(action.FrameHeight),
+	}
+	if flip {
+		source_rect.width = -source_rect.width
+	}
+	return source_rect
+}
+
+update_player_frame_data :: proc(action: Action, player: ^Player) {
 	player.Data.FrameTimer += rl.GetFrameTime()
-	if player.Data.FrameTimer > player.Data.FrameLength {
+	if player.Data.FrameTimer > action.FrameLength {
 		player.Data.CurrentFrame += 1
 		player.Data.FrameTimer = 0
 
-		if player.Data.CurrentFrame == player.Data.NumOfFrames {
+		if player.Data.CurrentFrame == action.NumOfFrames {
 			player.Data.CurrentFrame = 0
 		}
 	}
 }
 
-update_player_rect :: proc(player: ^Player) {
-	player.Data.SrcRect.x = f32(player.Data.CurrentFrame) * f32(player.Data.SrcRect.width)
-	player.Data.DestRect.x = player.Data.Position.x
-	player.Data.DestRect.y = player.Data.Position.y
-}
-
 render_player :: proc(game_config: config.GameConfig, player: ^Player) {
 	handle_key_down(game_config, player)
-	if config.DEBUG_MODE {
-		rl.DrawRectangleLines(
-			i32(player.Data.DestRect.x - player.Data.SrcRect.width),
-			i32(player.Data.DestRect.y - player.Data.SrcRect.height),
-			i32(player.Data.DestRect.width),
-			i32(player.Data.DestRect.height),
-			rl.RED,
-		)
-	}
-	if .Idle in player.State {
-		player.Data.NumOfFrames = 6
-		update_player_frame_data(player)
-		update_player_rect(player)
+	if .IDLE in player.State {
+		update_player_frame_data(player.Actions.Idle, player)
 		render_player_idle(player)
 	} else {
-		if .Running in player.State {
-			player.Data.NumOfFrames = 4
-			update_player_frame_data(player)
-			update_player_rect(player)
+		if .RUNNING in player.State {
+			update_player_frame_data(player.Actions.Run, player)
 			render_player_running(player)
 		}
-		if .Jumping in player.State {
-			player.Data.NumOfFrames = 4
-			update_player_frame_data(player)
-			update_player_rect(player)
+		if .JUMPING in player.State {
+			update_player_frame_data(player.Actions.Run, player)
 			render_player_jumping(player)
 		}
 	}
 }
 
 render_player_idle :: proc(player: ^Player) {
+	destination_rect := get_destination_rect(player.Actions.Idle, player.Data.Position)
+	source_rect := get_source_rect(player.Actions.Idle, player.Data.CurrentFrame, player.Data.Flip)
+	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Textures.Idle,
-		player.Data.SrcRect,
-		player.Data.DestRect,
-		player.Data.Origin,
+		player.Actions.Idle.Texture,
+		source_rect,
+		destination_rect,
+		get_origin(player.Actions.Idle),
 		0.0,
 		rl.WHITE,
 	)
 }
 
 render_player_running :: proc(player: ^Player) {
+	destination_rect := get_destination_rect(player.Actions.Run, player.Data.Position)
+	source_rect := get_source_rect(player.Actions.Run, player.Data.CurrentFrame, player.Data.Flip)
+	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Textures.Run,
-		player.Data.SrcRect,
-		player.Data.DestRect,
-		player.Data.Origin,
+		player.Actions.Run.Texture,
+		source_rect,
+		destination_rect,
+		get_origin(player.Actions.Run),
 		0.0,
 		rl.WHITE,
 	)
 }
 
 render_player_jumping :: proc(player: ^Player) {
+	destination_rect := get_destination_rect(player.Actions.Jump, player.Data.Position)
+	source_rect := get_source_rect(player.Actions.Jump, player.Data.CurrentFrame, player.Data.Flip)
+	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Textures.Jump,
-		player.Data.SrcRect,
-		player.Data.DestRect,
-		player.Data.Origin,
+		player.Actions.Jump.Texture,
+		source_rect,
+		destination_rect,
+		get_origin(player.Actions.Jump),
 		0.0,
 		rl.WHITE,
 	)

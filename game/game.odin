@@ -101,7 +101,7 @@ start :: proc(game: ^Game) {
 				game.Data.CurrentScreen = .Gameplay
 			}
 		case .Gameplay:
-			if config.DEBUG_MODE {
+			when config.DEBUG_MODE {
 				rl.DrawLine(
 					i32(game.Config.WindowWidth / 2),
 					0,
