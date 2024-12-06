@@ -1,7 +1,6 @@
 package game
 
 import "config"
-import "core:fmt"
 import "player"
 import rl "vendor:raylib"
 

@@ -1,7 +1,6 @@
 package player
 
 import "../config"
-import "core:fmt"
 import rl "vendor:raylib"
 
 PlayerData :: struct {
@@ -31,10 +30,7 @@ Player :: struct {
 }
 
 init :: proc(game_config: ^config.GameConfig) -> Player {
-	// load textures before setting up player data
 	player_actions := load_actions()
-
-	// set up player data
 	position := rl.Vector2{f32(game_config.WindowWidth / 2), f32(game_config.WindowHeight / 2)}
 	player_camera := rl.Camera2D {
 		offset   = position,
@@ -117,58 +113,59 @@ update_player_frame_data :: proc(action: Action, player: ^Player) {
 
 render_player :: proc(game_config: config.GameConfig, player: ^Player) {
 	handle_key_down(game_config, player)
-	if .IDLE in player.State {
+	switch {
+	case .IDLE in player.State:
 		update_player_frame_data(player.Actions.Idle, player)
 		render_player_idle(player)
-	} else {
-		if .RUNNING in player.State {
-			update_player_frame_data(player.Actions.Run, player)
-			render_player_running(player)
-		}
-		if .JUMPING in player.State {
-			update_player_frame_data(player.Actions.Run, player)
-			render_player_jumping(player)
-		}
+	case .JUMPING in player.State:
+		update_player_frame_data(player.Actions.Jump, player)
+		render_player_jumping(player)
+	case .RUNNING in player.State:
+		update_player_frame_data(player.Actions.Run, player)
+		render_player_running(player)
 	}
 }
 
 render_player_idle :: proc(player: ^Player) {
-	destination_rect := get_destination_rect(player.Actions.Idle, player.Data.Position)
-	source_rect := get_source_rect(player.Actions.Idle, player.Data.CurrentFrame, player.Data.Flip)
+	action := player.Actions.Idle
+	destination_rect := get_destination_rect(action, player.Data.Position)
+	source_rect := get_source_rect(action, player.Data.CurrentFrame, player.Data.Flip)
 	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Actions.Idle.Texture,
+		action.Texture,
 		source_rect,
 		destination_rect,
-		get_origin(player.Actions.Idle),
+		get_origin(action),
 		0.0,
 		rl.WHITE,
 	)
 }
 
 render_player_running :: proc(player: ^Player) {
-	destination_rect := get_destination_rect(player.Actions.Run, player.Data.Position)
-	source_rect := get_source_rect(player.Actions.Run, player.Data.CurrentFrame, player.Data.Flip)
+	action := player.Actions.Run
+	destination_rect := get_destination_rect(action, player.Data.Position)
+	source_rect := get_source_rect(action, player.Data.CurrentFrame, player.Data.Flip)
 	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Actions.Run.Texture,
+		action.Texture,
 		source_rect,
 		destination_rect,
-		get_origin(player.Actions.Run),
+		get_origin(action),
 		0.0,
 		rl.WHITE,
 	)
 }
 
 render_player_jumping :: proc(player: ^Player) {
-	destination_rect := get_destination_rect(player.Actions.Jump, player.Data.Position)
-	source_rect := get_source_rect(player.Actions.Jump, player.Data.CurrentFrame, player.Data.Flip)
+	action := player.Actions.Jump
+	destination_rect := get_destination_rect(action, player.Data.Position)
+	source_rect := get_source_rect(action, player.Data.CurrentFrame, player.Data.Flip)
 	draw_debug_rectangle(destination_rect, player.Data.Flip, source_rect)
 	rl.DrawTexturePro(
-		player.Actions.Jump.Texture,
+		action.Texture,
 		source_rect,
 		destination_rect,
-		get_origin(player.Actions.Jump),
+		get_origin(action),
 		0.0,
 		rl.WHITE,
 	)
