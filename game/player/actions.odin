@@ -14,11 +14,11 @@ Action :: struct {
 }
 
 Actions :: struct {
-	// Attack1: Action,
+	Attack1: Action,
 	// Attack2: Action,
-	Idle: Action,
-	Jump: Action,
-	Run:  Action,
+	Idle:    Action,
+	Jump:    Action,
+	Run:     Action,
 }
 
 get_action_data :: proc(file_name: string, frame_length: f32, num_of_frames: i32) -> Action {
@@ -37,14 +37,16 @@ get_action_data :: proc(file_name: string, frame_length: f32, num_of_frames: i32
 
 load_actions :: proc() -> Actions {
 	actions := Actions {
-		Idle = get_action_data("idle.png", 0.1, 6),
-		Jump = get_action_data("jump.png", 0.1, 4),
-		Run  = get_action_data("run.png", 0.1, 4),
+		Attack1 = get_action_data("attack1.png", 0.1, 8),
+		Idle    = get_action_data("idle.png", 0.1, 6),
+		Jump    = get_action_data("jump.png", 0.1, 4),
+		Run     = get_action_data("run.png", 0.1, 4),
 	}
 	return actions
 }
 
 unload_textures :: proc(player: ^Player) {
+	rl.UnloadTexture(player.Actions.Attack1.Texture)
 	rl.UnloadTexture(player.Actions.Idle.Texture)
 	rl.UnloadTexture(player.Actions.Jump.Texture)
 	rl.UnloadTexture(player.Actions.Run.Texture)
