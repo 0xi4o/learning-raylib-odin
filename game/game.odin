@@ -53,6 +53,8 @@ start :: proc(game: ^Game) {
 	rl.SetTargetFPS(240)
 	rl.SetExitKey(rl.KeyboardKey.KEY_NULL)
 
+	rl.PollInputEvents()
+
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 
