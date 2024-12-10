@@ -112,7 +112,6 @@ update_player_frame_data :: proc(action: Action, player: ^Player) {
 }
 
 render_player :: proc(game_config: config.GameConfig, player: ^Player) {
-	handle_key_down(game_config, player)
 	switch {
 	case .IDLE in player.State:
 		update_player_frame_data(player.Actions.Idle, player)

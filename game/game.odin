@@ -1,8 +1,10 @@
 package game
 
 import "config"
+import "core:fmt"
 import "player"
 import rl "vendor:raylib"
+import sdl2 "vendor:sdl2"
 
 GameScreen :: enum {
 	// Logo,
@@ -17,9 +19,10 @@ GameData :: struct {
 }
 
 Game :: struct {
-	Config: config.GameConfig,
-	Data:   GameData,
-	Player: player.Player,
+	Config:     config.GameConfig,
+	Controller: ^sdl2.GameController,
+	Data:       GameData,
+	Player:     player.Player,
 }
 
 init :: proc() {
@@ -36,13 +39,22 @@ init :: proc() {
 	)
 	defer rl.CloseWindow()
 
+	sdl2.SetHint(sdl2.HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1")
+
+	controller := init_controller()
+	defer close_controller(controller)
+
+	sdl2.Init(sdl2.INIT_EVERYTHING)
+	defer sdl2.Quit()
+
 	hero := player.init(&game_config)
 	defer player.unload_textures(&hero)
 
 	game := Game {
-		Config = game_config,
-		Data   = game_data,
-		Player = hero,
+		Config     = game_config,
+		Controller = controller,
+		Data       = game_data,
+		Player     = hero,
 	}
 
 	start(&game)
@@ -122,6 +134,7 @@ start :: proc(game: ^Game) {
 			if pressedKey == rl.KeyboardKey.ESCAPE {
 				game.Data.CurrentScreen = .Paused
 			} else {
+				player.handle_key_down(game.Config, game.Controller, &game.Player)
 				player.render_player(game.Config, &game.Player)
 			}
 		case .Paused:

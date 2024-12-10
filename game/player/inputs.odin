@@ -3,6 +3,7 @@ package player
 import "../config"
 import "core:fmt"
 import rl "vendor:raylib"
+import sdl2 "vendor:sdl2"
 
 Movement :: struct {}
 
@@ -15,26 +16,21 @@ set_player_active :: proc(player: ^Player, state: PlayerState) {
 	player.State += {state}
 }
 
-handle_input :: proc(game_config: config.GameConfig, player: ^Player) {
-	gamepad: i32 = 0
-
-	// Check if gamepad is available and print result
-	is_available := rl.IsGamepadAvailable(gamepad)
-	fmt.println("Gamepad available:", is_available)
-
-	if is_available {
-		rl.DrawText(
-			rl.TextFormat("GP%d: %s", gamepad, rl.GetGamepadName(gamepad)),
-			10,
-			10,
-			20,
-			rl.BLACK,
-		)
+handle_gamepad :: proc(game_controller: ^sdl2.GameController) {
+	if sdl2.IsGameController(0) {
+		// Test if we can read a button state
+		a_button := sdl2.GameControllerGetButton(game_controller, .A)
+		fmt.println("A button state:", a_button)
 	}
 }
 
-handle_key_down :: proc(game_config: config.GameConfig, player: ^Player) {
-	handle_input(game_config, player)
+
+handle_key_down :: proc(
+	game_config: config.GameConfig,
+	game_controller: ^sdl2.GameController,
+	player: ^Player,
+) {
+	// handle_gamepad(game_controller)
 	is_moving: bool
 	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
 		set_player_active(player, .RUNNING)
@@ -48,7 +44,10 @@ handle_key_down :: proc(game_config: config.GameConfig, player: ^Player) {
 		is_moving = true
 	}
 	player.Data.Velocity.y += 2000 * rl.GetFrameTime()
-	if player.Data.IsGrounded && rl.IsKeyPressed(.SPACE) {
+	// a_pressed := sdl2.GameControllerGetButton(game_controller, .A) == 1
+	a_pressed := rl.IsGamepadButtonPressed(0, rl.GamepadButton.RIGHT_FACE_DOWN)
+	fmt.println(a_pressed)
+	if player.Data.IsGrounded && (rl.IsKeyPressed(.SPACE) || a_pressed) {
 		set_player_active(player, .JUMPING)
 		player.Data.Velocity.y = -800
 		player.Data.IsGrounded = false
